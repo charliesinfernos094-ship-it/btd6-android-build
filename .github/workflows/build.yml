@@ -1,0 +1,12 @@
+name: Build Android
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect project ZIP
+        run: |
+          unzip -l projeto.zip | head -100
+          echo "ZIP recebido. É necessário extrair e identificar o projeto Android antes da compilação."
