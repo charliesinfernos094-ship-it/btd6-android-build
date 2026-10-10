@@ -1,13 +1,43 @@
-name: Build Android
+name: Build MarLoader ARM64
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'projeto.zip'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
 
 jobs:
-  inspect:
+  build-native:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Inspect project ZIP
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y unzip cmake ninja-build
+      - name: Install Android NDK
+        uses: android-actions/setup-android@v3
+      - name: Install NDK package
+        run: sdkmanager "ndk;27.3.13750724"
+      - name: Extract project sources
+        run: unzip -o projeto.zip -d source
+      - name: Compile ARM64 native library
         run: |
-          unzip -l projeto.zip | head -100
+          cmake -S source/MarLoader-Android/Native -B build-arm64 -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.3.13750724/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-arm64 --parallel 2
+          mkdir -p output
+          cp build-arm64/libMarLoader.so output/
+          file output/libMarLoader.so
+      - name: Upload native library artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarLoader-ARM64-native
+          path: output/libMarLoader.so
+          if-no-files-found: error
