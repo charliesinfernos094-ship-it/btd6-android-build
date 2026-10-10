@@ -13,8 +13,8 @@ jobs:
           sudo apt-get install -y unzip cmake ninja-build
       - name: Install Android SDK and NDK
         uses: android-actions/setup-android@v3
-      - name: Install NDK package
-        run: sdkmanager "ndk;27.3.13750724"
+        with:
+          packages: 'ndk;27.3.13750724'
       - name: Extract project sources
         run: |
           mkdir source
