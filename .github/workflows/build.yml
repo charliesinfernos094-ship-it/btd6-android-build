@@ -1,15 +1,6 @@
 name: Build MarLoader ARM64
-
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'projeto.zip'
-      - '.github/workflows/build.yml'
-
-permissions:
-  contents: read
-
 jobs:
   build-native:
     runs-on: ubuntu-latest
@@ -17,27 +8,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y unzip cmake ninja-build
-      - name: Install Android NDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip cmake ninja-build
+      - name: Install Android SDK and NDK
         uses: android-actions/setup-android@v3
       - name: Install NDK package
         run: sdkmanager "ndk;27.3.13750724"
       - name: Extract project sources
-        run: unzip -o projeto.zip -d source
+        run: |
+          mkdir source
+          unzip -q projeto.zip -d source
+          find source -name CMakeLists.txt -print
       - name: Compile ARM64 native library
         run: |
-          cmake -S source/MarLoader-Android/Native -B build-arm64 -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/27.3.13750724/build/cmake/android.toolchain.cmake" \
+          SRC="$(find source -path '*/MarLoader-Android/Native/CMakeLists.txt' -print -quit)"
+          test -n "$SRC" || { echo "CMakeLists.txt do MarLoader não encontrado"; exit 1; }
+          cmake -S "$(dirname "$SRC")" -B build \
+            -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-24 \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-arm64 --parallel 2
-          mkdir -p output
-          cp build-arm64/libMarLoader.so output/
-          file output/libMarLoader.so
-      - name: Upload native library artifact
+            -DANDROID_PLATFORM=android-24
+          cmake --build build
+      - name: Upload native library
         uses: actions/upload-artifact@v4
         with:
           name: MarLoader-ARM64-native
-          path: output/libMarLoader.so
+          path: build/**/*.so
           if-no-files-found: error
